@@ -241,9 +241,9 @@ int main(int argc, char* argv[]) {
 	int count_fp = 0, temp_count = 0, temp_fpcount = 0, match_count = 0;
 	option(argc, argv, &opts, temp, &temp_count, temp_fp, &temp_fpcount);
 	input(argc, argv, files, &count_fp, temp, temp_count, temp_fp, temp_fpcount);
-	printf("%d", temp_count);
-	printf("%d", temp_fpcount);
-	printf("%d", count_fp);
+	//printf("%d", temp_count);
+	//printf("%d", temp_fpcount);
+	//printf("%d", count_fp);
 	FILE* fp = NULL;
 	for(int i = 0; i < count_fp; i++) {
 		fp = fopen(files[i], "r");

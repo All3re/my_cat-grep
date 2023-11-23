@@ -95,7 +95,7 @@ void output(options opts, FILE* fp, int* number, char tmp[]) {
 			}
 		}
 		if(opts.v){
-			if(r >= 0 && r < 32 && r!= 9 && r != 10 || r == 127) {
+			if(r >= 0 && r  < 32 && r != 9 && r != 10 || r == 127) {
 				if(r == 127) {
 					printf("^?");
 					continue;
@@ -111,7 +111,7 @@ void output(options opts, FILE* fp, int* number, char tmp[]) {
 		}
 		if(opts.t){
 			if(r == '\t') {
-				printf("^|");
+				printf("^I");
 				continue;
 			}
 		}
@@ -129,9 +129,9 @@ int main(int argc, char* argv[]) {
 	option(argc, argv, &optt);
 	input(argc, argv, files, &count_fp);
 	for(int i = 0;  i < count_fp; i++) {
-		fp = fopen(files[i], "r");
+		fp = fopen(files[i], "rb+");
 		if(fp == NULL)
-		    printf("error");
+		    fprintf(stderr, "s21_cat: %s: No such file or directory", argv[i]);
 		else {
 		    output(optt, fp, &number, tmp);
 			fclose(fp);
