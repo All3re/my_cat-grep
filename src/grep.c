@@ -30,6 +30,7 @@ char* pattern(char* line, char* expression, regmatch_t* pmatch, options opts);
 char* pattern_file(char* line, char* filename, options* opts, char** temp, int temp_count, char** temp_fp, int temp_fpcount, int line_number, int* match_count, int files_count);
 void file_handl(FILE* fp, options* opts, char** temp, int temp_count, char** temp_fp, int temp_fpcount, char* filename, int* match_count, int files_count);
 void output(char* line, char* filename, int line_num, int files_count, options opts);
+char* output_o(char* line, char* filename, int line_num, int files_count, options* opts, int* switch_o, char* temp, int flag, char* pos);
 
 void option(int argc, char* argv[], options *opts, char** temp, int *temp_count, char** temp_fp, int *temp_fpcount){
 	int opt_ind;
@@ -72,7 +73,7 @@ void option(int argc, char* argv[], options *opts, char** temp, int *temp_count,
 			  opts->o = 1;
 			  break;
 			default:
-			  printf("error");
+			  printf("erro");
 			  exit(-1);
 			  break;
 		}
@@ -80,7 +81,7 @@ void option(int argc, char* argv[], options *opts, char** temp, int *temp_count,
 	for(int i = 0; i < *temp_fpcount; i++) {
 		FILE* fp = fopen(temp_fp[i], "r");
 		if(fp == NULL) {
-			fprintf(stderr, "error");
+			fprintf(stderr, "err");
 			exit(-1);
 		}
 		else {
@@ -133,13 +134,38 @@ char* pattern(char* line, char* expression, regmatch_t* pmatch, options opts){
 		}
 		if(err = regexec(&reg_exp, line, len, pmatch, 0) == 0) {
 			result = line;
-		} else if(err != REG_NOMATCH) {
-			regerror(err, &reg_exp, mess, 64);
-			exit(-1);
-		}
+		} //else if(err != REG_NOMATCH) {
+			//regerror(err, &reg_exp, mess, 64);
+			//exit(-1);
+		//}
 		regfree(&reg_exp);
 	}
 	return result;
+}
+
+
+char* output_o(char* line, char* filename, int line_num, int files_count, options* opts, int* switch_n, char* res, int flag, char* pos){
+	char* new_line = NULL;
+	char* this_line = NULL;
+	if(pos != NULL){
+		this_line = pos;
+	}
+	else {
+		this_line = line;
+	}
+	while((pos = strstr(this_line, res)) != NULL) {
+		if(strstr(pos, res) != NULL){
+			*pos = '.';
+		}
+		output(res, filename, line_num, files_count, *opts);
+		if(*switch_n == 0 && opts->n == 1){
+			opts->n = 0;
+			*switch_n = 1;
+		}
+		new_line = pos;
+		if(flag) break;
+	}
+	return new_line;
 }
 
 char* pattern_file(char* line, char* filename, options* opts, char** temp, int temp_count, char** temp_fp, int temp_fpcount, int line_number, int* match_count, int files_count) {
@@ -147,10 +173,28 @@ char* pattern_file(char* line, char* filename, options* opts, char** temp, int t
 	char* tmp_file = NULL;
 	size_t len;
 	regmatch_t pmatch[strlen(line)];
+	int mas[2] = {-1, -1};
+	char* pos = NULL;
+	int switch_n = 0;
 	for(int i = 0; i < temp_count; i++){
 		res = pattern(line, temp[i], pmatch, *opts);
-		if((res != NULL && opts->o) || res != NULL && opts->v){
+		if((res != NULL && !opts->o) || res != NULL && opts->v){
 			break;
+		}
+		else if(res != NULL && opts->o){
+			mas[0] = mas[1];
+			mas[1] = i;
+			if(pos == NULL){
+				*match_count += 1;
+			}
+			char temp[strlen(line)];
+			int len = pmatch[0].rm_eo - pmatch[0].rm_so; 
+			memcpy(temp, line + pmatch[0].rm_so, len);
+			temp[len] = 0;
+			if(pos == NULL || (pos != NULL && strstr(pos, temp))){
+				int flag = 0;
+				pos = output_o(res, filename, line_number, files_count, opts, &switch_n, temp, flag, pos);
+			}
 		}
 	}
 	if(res != NULL){
@@ -162,10 +206,25 @@ char* pattern_file(char* line, char* filename, options* opts, char** temp, int t
 				if((res != NULL && opts->o) || res != NULL && opts->v){
 					break;
 				}
+				else if(res != NULL && opts->o == 1){
+					if(pos == NULL) *match_count += 1;
+					char temp[strlen(line)];
+			        int len = pmatch[0].rm_eo - pmatch[0].rm_so; 
+			        memcpy(temp, line + pmatch[0].rm_so, len);
+			        temp[len] = 0;
+					if(pos == NULL || (pos != NULL && strstr(pos, temp))){
+						int flag = 0;
+						pos = output_o(res, filename, line_number, files_count, opts, &switch_n, temp, flag, pos);
+					}
+				}
 			}
 			free(tmp_file);
 			fclose(fp);
 		}
+	}
+	if(switch_n == 1 && opts->n == 0) {
+		switch_n = 0;
+		opts->n = 1;
 	}
 	return res;
 }
@@ -177,6 +236,10 @@ void file_handl(FILE* fp, options* opts, char** temp, int temp_count, char** tem
 	char* line_fp = NULL;
 	while(endline = getline(&line_fp, &len, fp) != EOF) {
 		int check = 0;
+		if(line_fp == NULL) {
+			line_num += 1;
+			continue; 
+		}
 		char* match_part = pattern_file(line_fp, filename, opts, temp, temp_count, temp_fp, temp_fpcount, line_num, match_count, files_count);
 		if(match_part == NULL){
 			check = 0;
