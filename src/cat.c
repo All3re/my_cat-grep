@@ -19,6 +19,8 @@ void input(int argc, char* argv[], char** files, int *count_files);
 void option(int argc, char* argv[], options *opts){
 	int opt_ind;
 	static struct option long_op[] = {{"number-nonblank", 0, 0, 'b'},
+	                                  {"number", 0, 0, 'n'},
+									  {"squeeze-blank", 0, 0, 's'},
 	                                  {0,0,0,0}};
 	int opt = getopt_long(argc, argv, "+benvstET", long_op, &opt_ind);
 	for(; opt!=-1; opt = getopt_long(argc, argv, "+benvstET", long_op, &opt_ind)){
