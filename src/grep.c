@@ -190,9 +190,7 @@ char* pattern_file(char* line, char* filename, options* opts, char** temp, int t
 		else if(res != NULL && opts->o){
 			mas[0] = mas[1];
 			mas[1] = i;
-			if(pos == NULL){
-				*match_count += 1;
-			}
+			if(pos == NULL) *match_count += 1;
 			char temp[strlen(line)];
 			int len = pmatch[0].rm_eo - pmatch[0].rm_so; 
 			memcpy(temp, line + pmatch[0].rm_so, len);
@@ -203,7 +201,7 @@ char* pattern_file(char* line, char* filename, options* opts, char** temp, int t
 			}
 		}
 	}
-	if(res != NULL){
+	if(res == NULL){
 		for(int i = 0; i < temp_fpcount; i++){
 			FILE* fp = fopen(temp_fp[i], "r");
 			int c;
@@ -254,8 +252,11 @@ void file_handl(FILE* fp, options* opts, char** temp, int temp_count, char** tem
 		    check = 1;
 		}
 		if((check == 1 && opts->v == 0) ||(check == 0 && opts->v == 1)){
-			*match_count += 1;
+			if(!opts->o){
+				*match_count += 1;
+			}
 			if(opts->c == 0 && opts->l == 0 && line_fp[0] != '.' && line_fp[1] != '.' && line_fp[2] != '.' && line_fp[3] != '.' && line_fp[4] != '.') { 
+				//*match_count += 1;
 				output(line_fp, filename, line_num, files_count, *opts);
 			}
 		}
