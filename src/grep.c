@@ -27,10 +27,10 @@ void save(int argc){
 void input(int argc, char* argv[], char** files, int *count_files, char** temp, int temp_count, char** temp_fp, int temp_fpcount);
 void option(int argc, char* argv[], options *opts, char** temp, int *temp_count, char** temp_fp, int *temp_fpcount);
 char* pattern(char* line, char* expression, regmatch_t* pmatch, options opts);
-char* pattern_file(char* line, char* filename, options* opts, char** temp, int temp_count, char** temp_fp, int temp_fpcount, int line_number, int* match_count, int files_count);
+char* pattern_file(char* line, char* filename, options* opts, char** temp, int temp_count, char** temp_fp, int temp_fpcount, int line_number, int* match_count, int files_count, int* chk);
 void file_handl(FILE* fp, options* opts, char** temp, int temp_count, char** temp_fp, int temp_fpcount, char* filename, int* match_count, int files_count);
 void output(char* line, char* filename, int line_num, int files_count, options opts);
-char* output_o(char* line, char* filename, int line_num, int files_count, options* opts, int* switch_o, char* temp, int flag, char* pos);
+char* output_o(char* line, char* filename, int line_num, int files_count, options* opts, int* switch_o, char* temp, int flag, char* pos, int* chk);
 
 void option(int argc, char* argv[], options *opts, char** temp, int *temp_count, char** temp_fp, int *temp_fpcount){
 	int opt_ind;
@@ -136,7 +136,8 @@ char* pattern(char* line, char* expression, regmatch_t* pmatch, options opts){
 			printf("%s\n", mess);
 			exit(-1);
 		}
-		if(err = regexec(&reg_exp, line, len, pmatch, 0) == 0) {
+		err = regexec(&reg_exp, line, len, pmatch, 0);
+		if(err == 0) {
 			result = line;
 		} //else if(err != REG_NOMATCH) {
 			//regerror(err, &reg_exp, mess, 64);
@@ -148,7 +149,7 @@ char* pattern(char* line, char* expression, regmatch_t* pmatch, options opts){
 }
 
 
-char* output_o(char* line, char* filename, int line_num, int files_count, options* opts, int* switch_n, char* res, int flag, char* pos){
+char* output_o(char* line, char* filename, int line_num, int files_count, options* opts, int* switch_n, char* res, int flag, char* pos, int* chk){
 	char* new_line = NULL;
 	char* this_line = NULL;
 	if(pos != NULL){
@@ -163,6 +164,7 @@ char* output_o(char* line, char* filename, int line_num, int files_count, option
 		}
 		if(opts->l == 0 && opts->c == 0) {
 			output(res, filename, line_num, files_count, *opts);
+			*chk = 1;
 		}
 		if(*switch_n == 0 && opts->n == 1){
 			opts->n = 0;
@@ -174,13 +176,13 @@ char* output_o(char* line, char* filename, int line_num, int files_count, option
 	return new_line;
 }
 
-char* pattern_file(char* line, char* filename, options* opts, char** temp, int temp_count, char** temp_fp, int temp_fpcount, int line_number, int* match_count, int files_count) {
+char* pattern_file(char* line, char* filename, options* opts, char** temp, int temp_count, char** temp_fp, int temp_fpcount, int line_number, int* match_count, int files_count, int* chk) {
 	char* res = NULL;
 	char* tmp_file = NULL;
 	size_t len;
 	regmatch_t pmatch[strlen(line)];
 	int mas[2] = {-1, -1};
-	char* pos = NULL;
+	char* poss = NULL;
 	int switch_n = 0;
 	for(int i = 0; i < temp_count; i++){
 		res = pattern(line, temp[i], pmatch, *opts);
@@ -190,14 +192,14 @@ char* pattern_file(char* line, char* filename, options* opts, char** temp, int t
 		else if(res != NULL && opts->o){
 			mas[0] = mas[1];
 			mas[1] = i;
-			if(pos == NULL) *match_count += 1;
-			char temp[strlen(line)];
+			if(poss == NULL && !opts->c) *match_count += 1;
+			char tmp[strlen(line)];
 			int len = pmatch[0].rm_eo - pmatch[0].rm_so; 
-			memcpy(temp, line + pmatch[0].rm_so, len);
-			temp[len] = 0;
-			if(pos == NULL || (pos != NULL && strstr(pos, temp))){
+			memcpy(tmp, line + pmatch[0].rm_so, len);
+			tmp[len] = 0;
+			if(poss == NULL || (poss != NULL && strstr(poss, tmp))){
 				int flag = 0;
-				pos = output_o(res, filename, line_number, files_count, opts, &switch_n, temp, flag, pos);
+				poss = output_o(res, filename, line_number, files_count, opts, &switch_n, tmp, flag, poss, chk);
 			}
 		}
 	}
@@ -211,14 +213,14 @@ char* pattern_file(char* line, char* filename, options* opts, char** temp, int t
 					break;
 				}
 				else if(res != NULL && opts->o == 1){
-					if(pos == NULL) *match_count += 1;
+					if(poss == NULL && !opts->c) *match_count += 1;
 					char temp[strlen(line)];
 			        int len = pmatch[0].rm_eo - pmatch[0].rm_so; 
 			        memcpy(temp, line + pmatch[0].rm_so, len);
 			        temp[len] = 0;
-					if(pos == NULL || (pos != NULL && strstr(pos, temp))){
+					if(poss == NULL || (poss != NULL && strstr(poss, temp))){
 						int flag = 0;
-						pos = output_o(res, filename, line_number, files_count, opts, &switch_n, temp, flag, pos);
+						poss = output_o(res, filename, line_number, files_count, opts, &switch_n, temp, flag, poss, chk);
 					}
 				}
 			}
@@ -238,13 +240,17 @@ void file_handl(FILE* fp, options* opts, char** temp, int temp_count, char** tem
 	int line_num = 1;
 	int endline;
 	char* line_fp = NULL;
+	int chk = 0;
 	while(endline = getline(&line_fp, &len, fp) != EOF) {
+		if(opts->v && opts->o && !opts->c && !opts->l){
+			break;
+		}
 		int check = 0;
 		if(line_fp == NULL) {
 			line_num += 1;
 			continue; 
 		}
-	    char* match_part = pattern_file(line_fp, filename, opts, temp, temp_count, temp_fp, temp_fpcount, line_num, match_count, files_count);
+	    char* match_part = pattern_file(line_fp, filename, opts, temp, temp_count, temp_fp, temp_fpcount, line_num, match_count, files_count, &chk);
 		if(match_part == NULL){
 			check = 0;
 	    }
@@ -252,10 +258,8 @@ void file_handl(FILE* fp, options* opts, char** temp, int temp_count, char** tem
 		    check = 1;
 		}
 		if((check == 1 && opts->v == 0) ||(check == 0 && opts->v == 1)){
-			if(!opts->o){
-				*match_count += 1;
-			}
-			if(opts->c == 0 && opts->l == 0 && line_fp[0] != '.' && line_fp[1] != '.' && line_fp[2] != '.' && line_fp[3] != '.' && line_fp[4] != '.') { 
+			*match_count += 1;
+			if(opts->c == 0 && opts->l == 0 && chk == 0) { 
 				//*match_count += 1;
 				output(line_fp, filename, line_num, files_count, *opts);
 			}

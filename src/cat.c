@@ -22,7 +22,7 @@ void option(int argc, char* argv[], options *opts){
 	                                  {"number", 0, 0, 'n'},
 									  {"squeeze-blank", 0, 0, 's'},
 	                                  {0,0,0,0}};
-	int opt = getopt_long(argc, argv, "+benvstET", long_op, &opt_ind);
+	int opt = getopt_long(argc, argv, "benvstET", long_op, &opt_ind);
 	for(; opt!=-1; opt = getopt_long(argc, argv, "+benvstET", long_op, &opt_ind)){
 		switch(opt){
 			case 'b':
