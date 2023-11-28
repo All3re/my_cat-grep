@@ -178,6 +178,7 @@ char* output_o(char* line, char* filename, int line_num, int files_count, option
 
 char* pattern_file(char* line, char* filename, options* opts, char** temp, int temp_count, char** temp_fp, int temp_fpcount, int line_number, int* match_count, int files_count, int* chk) {
 	char* res = NULL;
+	char* save = NULL; 
 	char* tmp_file = NULL;
 	size_t len;
 	regmatch_t pmatch[strlen(line)];
@@ -187,9 +188,11 @@ char* pattern_file(char* line, char* filename, options* opts, char** temp, int t
 	for(int i = 0; i < temp_count; i++){
 		res = pattern(line, temp[i], pmatch, *opts);
 		if((res != NULL && !opts->o) || res != NULL && opts->v){
+			save = res;
 			break;
 		}
 		else if(res != NULL && opts->o){
+			save = res;
 			mas[0] = mas[1];
 			mas[1] = i;
 			if(poss == NULL && !opts->c) *match_count += 1;
@@ -209,10 +212,12 @@ char* pattern_file(char* line, char* filename, options* opts, char** temp, int t
 			int c;
 			while(c = getline(&tmp_file, &len, fp) != EOF){
 				res = pattern(line, tmp_file, pmatch, *opts);
-				if((res != NULL && opts->o) || res != NULL && opts->v){
+				if((res != NULL && !opts->o) || res != NULL && opts->v){
+					save = res;
 					break;
 				}
 				else if(res != NULL && opts->o == 1){
+					save = res;
 					if(poss == NULL && !opts->c) *match_count += 1;
 					char temp[strlen(line)];
 			        int len = pmatch[0].rm_eo - pmatch[0].rm_so; 
@@ -232,7 +237,7 @@ char* pattern_file(char* line, char* filename, options* opts, char** temp, int t
 		switch_n = 0;
 		opts->n = 1;
 	}
-	return res;
+	return save;
 }
 
 void file_handl(FILE* fp, options* opts, char** temp, int temp_count, char** temp_fp, int temp_fpcount, char* filename, int* match_count, int files_count){
@@ -276,10 +281,10 @@ void file_handl(FILE* fp, options* opts, char** temp, int temp_count, char** tem
 				*match_count = 0;
 			}
 		}
-		if(files_count = 1 || opts->h == 1){
+		if((files_count = 1 || opts->h == 1) && opts->l == 0){
 			printf("%d\n", *match_count);
 		}
-		else{
+		else if(opts->l == 0){
 			printf("%s:%d\n", filename, *match_count);
 		} 
 	}
